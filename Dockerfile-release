@@ -1,24 +1,4 @@
-# TODO: move to k8s.gcr.io/build-image/debian-base:bullseye-v1.y.z when patched
-FROM debian:bullseye-20210927
-
-ADD etcd /usr/local/bin/
-ADD etcdctl /usr/local/bin/
-RUN mkdir -p /var/etcd/
-RUN mkdir -p /var/lib/etcd/
-
-# Alpine Linux doesn't use pam, which means that there is no /etc/nsswitch.conf,
-# but Golang relies on /etc/nsswitch.conf to check the order of DNS resolving
-# (see https://github.com/golang/go/commit/9dee7771f561cf6aee081c0af6658cc81fac3918)
-# To fix this we just create /etc/nsswitch.conf and add the following line:
-RUN echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' >> /etc/nsswitch.conf
-
-EXPOSE 2379 2380
-
-# Define default command.
-CMD ["/usr/local/bin/etcd"]
-
-# syntax = docker/dockerfile:1-experimental
-FROM registry.access.redhat.com/ubi8/ubi-init:latest as builder
+FROM registry.access.redhat.com/ubi9/ubi-init:latest as builder
 
 RUN dnf install -y gcc make git && rm -rf /var/lib/apt/lists/*
 
@@ -45,11 +25,12 @@ COPY . .
 
 RUN make
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal as redhat-production
+FROM registry.access.redhat.com/ubi9/ubi-minimal as redhat-production
 
-RUN microdnf install shadow-utils.x86_64 && { groupadd -r nbycomp; \
-    adduser -g nbycomp -m -s /bin/nologin nbycomp; \
-    chown -R nbycomp:nbycomp /home/nbycomp; }
+RUN microdnf update -y \
+    && microdnf install -y shadow-utils \
+    && adduser --no-create-home --user-group nbycomp \
+    && microdnf remove -y shadow-utils
 
 USER nbycomp
 
