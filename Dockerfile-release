@@ -35,6 +35,8 @@ RUN microdnf update -y \
 USER nbycomp
 
 WORKDIR /var/lib/etcd/
+RUN mkdir -m 0700 default.etcd && chown nbycomp default.etcd
+VOLUME /var/lib/etcd/default.etcd
 
 EXPOSE 2379 2380
 
